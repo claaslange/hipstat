@@ -3,16 +3,16 @@
 
 # Copyright (c) 2013, Eric Melski
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met: 
-# 
+# modification, are permitted provided that the following conditions are met:
+#
 # 1. Redistributions of source code must retain the above copyright notice,
 #    this list of conditions and the following disclaimer.
 # 2. Redistributions in binary form must reproduce the above copyright notice,
 #    this list of conditions and the following disclaimer in the documentation
 #    and/or other materials provided with the distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -46,15 +46,17 @@ from optparse import OptionParser
 def heatmap():
     buckets = np.zeros((7,24))
     for msg in data["messages"]:
+        if not msg:
+          continue
         localtime = ToLocaltime(msg["date"])
         buckets[localtime.weekday()][localtime.hour] += 1
 
-    row_labels = [ "Monday", 
-                   "Tuesday", 
-                   "Wednesday", 
-                   "Thursday", 
-                   "Friday", 
-                   "Saturday", 
+    row_labels = [ "Monday",
+                   "Tuesday",
+                   "Wednesday",
+                   "Thursday",
+                   "Friday",
+                   "Saturday",
                    "Sunday" ]
     fig = plt.figure()
     ax  = fig.add_subplot(111)
@@ -77,6 +79,8 @@ def heatmap():
 def engagement():
     buckets = {}
     for msg in data["messages"]:
+        if not msg:
+          continue
         localtime = ToLocaltime(msg["date"])
         strtime   = localtime.strftime("%Y%m%d")
         user = msg["from"]["name"]
@@ -90,17 +94,17 @@ def engagement():
     # Convert to a format that matplotlib understands -- numpy arrays, with
     # the dates as floating-point values.
 
-    count = [len(buckets[key]) 
+    count = [len(buckets[key])
              for key in sorted(buckets.iterkeys())]
-    days  = [mdates.strpdate2num('%Y%m%d')(key) 
+    days  = [mdates.strpdate2num('%Y%m%d')(key)
              for key in sorted(buckets.iterkeys())]
 
     # x-axis is the months.
 
-    x = [dt.datetime.strptime(d, '%Y%m%d').date() 
+    x = [dt.datetime.strptime(d, '%Y%m%d').date()
          for d in sorted(buckets.iterkeys())]
     ncount = np.array(count)
-    
+
     plt.plot(x, ncount, color='r')
 
     ndays = np.array(days)
@@ -135,6 +139,8 @@ def speakers():
     total = co.defaultdict(int)
     users = co.defaultdict(int)
     for msg in data["messages"]:
+        if not msg:
+          continue
         localtime = ToLocaltime(msg["date"])
         strtime   = localtime.strftime("%Y%m")
         user = msg["from"]["name"]
@@ -147,8 +153,8 @@ def speakers():
     # Sort users by *total* messages sent, which will define the plotting order
     # for the graph.  Also filter out uncommon users.
 
-    sortedUsers = [user 
-                   for user in sorted(users, key=users.get, reverse=True) 
+    sortedUsers = [user
+                   for user in sorted(users, key=users.get, reverse=True)
                    if users[user] > 50]
 
     # Put the data in a form usable by matplotlib: an MxN array.
@@ -159,8 +165,8 @@ def speakers():
         row = 0
         for user in sortedUsers:
             if user in buckets[month]:
-                points[row][col] = round(100 
-                                         * buckets[month][user] 
+                points[row][col] = round(100
+                                         * buckets[month][user]
                                          / total[month])
             row += 1
         col += 1
@@ -182,7 +188,7 @@ def speakers():
 
     # x-axis is the months.
 
-    x = [dt.datetime.strptime(d, '%Y%m').date() 
+    x = [dt.datetime.strptime(d, '%Y%m').date()
          for d in sorted(buckets.iterkeys())]
 
     # Draw the curves.  The bottom and top curves are handled specially, since
@@ -227,7 +233,7 @@ def speakers():
 
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-    ax.legend(handles[::-1], 
+    ax.legend(handles[::-1],
         [user.split()[0] for user in sortedUsers+['Other']][::-1],
         loc='center left',
         bbox_to_anchor=(1, 0.5))
@@ -249,6 +255,8 @@ def wordfreq():
     words = {}
     ignore = {}
     for msg in data["messages"]:
+        if not msg:
+          continue
         for word in msg["message"].split():
             word = re.sub("&quot;", "\"", word)
             word = word.strip("?!:,.\"()*'-").lower()
@@ -277,6 +285,7 @@ def wordfreq():
     return False
 
 def ToLocaltime(raw):
+    raw = raw.replace(" ","")
     timestamp = dateutil.parser.parse(raw)
     timestamp = timestamp.replace(tzinfo=dateutil.tz.tzutc())
     localtime = timestamp.astimezone(dateutil.tz.tzlocal())
@@ -285,25 +294,25 @@ def ToLocaltime(raw):
 def Include(msg, user, after, before):
     if user != "" and msg["from"]["name"] != user:
         return False
-    
+
     return True
-        
+
 
 parser = OptionParser()
-parser.add_option("-o", "--output", 
-                  dest="filename", 
-                  help="save plot to a file", 
+parser.add_option("-o", "--output",
+                  dest="filename",
+                  help="save plot to a file",
                   metavar="FILE",
                   default="")
-parser.add_option("-r", "--report", 
+parser.add_option("-r", "--report",
                   dest="report",
                   help="report to generate (wordfreq, heatmap, speakers, engagement)",
-                  metavar="NAME", 
+                  metavar="NAME",
                   default="heatmap")
-parser.add_option("-w", "--wordle", 
+parser.add_option("-w", "--wordle",
                   dest="wordle",
                   help="output word freq data in wordle.com format",
-                  default=False, 
+                  default=False,
                   action="store_true")
 parser.add_option("-u", "--user",
                   dest="user",
@@ -314,7 +323,7 @@ parser.add_option("-u", "--user",
 
 data = json.load(sys.stdin)
 if options.user != "":
-    data["messages"] = [msg for msg in data["messages"] 
+    data["messages"] = [msg for msg in data["messages"]
                         if msg["from"]["name"] == options.user]
 
 if globals()[options.report]():
